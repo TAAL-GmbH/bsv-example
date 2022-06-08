@@ -1,6 +1,12 @@
 const bsv = require('bsv')
 const axios = require('axios')
 
+const wocNetwork = 'test'    // The network for the whatsonchain URL - 'main' or 'test'
+
+const bsvNetwork = 'testnet' // The network for BSV library - 'livenet' or 'testnet'
+
+const dataString = 'test' // the data to write to the blockchain.
+
 const myArgs = process.argv.slice(2)
 
 switch (myArgs[0]) {
@@ -24,25 +30,26 @@ switch (myArgs[0]) {
 function generateAddress () {
   const privateKey = bsv.PrivateKey()
   const wif = privateKey.toWIF()
-  const addr = privateKey.toAddress('testnet').toString()
+  const addr = privateKey.toAddress(bsvNetwork).toString() 
   console.log('Your WIF:     ' + wif)
   console.log('Your address: ' + addr)
-  console.log('Send some test coins to the address from to https://faucet.bitcoincloud.net/')
+  if (wocNetwork === 'test') {
+    console.log('Send some test coins to the address from to https://faucet.bitcoincloud.net/')
+  }
 }
 
 async function write (wif) {
   const privateKey = bsv.PrivateKey.fromWIF(wif)
   const publicKeyHash = bsv.crypto.Hash.sha256ripemd160(privateKey.publicKey.toBuffer()).toString('hex')
 
-  const addr = privateKey.toAddress('testnet').toString()
+  const addr = privateKey.toAddress(bsvNetwork).toString()
 
-  // get UTXOs
-  // GET https://api.whatsonchain.com/v1/bsv/<network>/address/<address>/unspent
-  const response = await axios.get(`https://api.whatsonchain.com/v1/bsv/test/address/${addr}/unspent`)
+  // get UTXOs for the address
+  const response = await axios.get(`https://api.whatsonchain.com/v1/bsv/${wocNetwork}/address/${addr}/unspent`)
 
   const unspentArr = response.data
 
-  // unspent is an array eg,
+  // unspent is an array that looks like this:
   // [
   //    {
   //        height: 0,
@@ -70,7 +77,7 @@ async function write (wif) {
   tx.from(utxo)
 
   // add data output
-  tx.addSafeData('test')
+  tx.addSafeData(dataString)
 
   // add change
   tx.addOutput(new bsv.Transaction.Output({
@@ -81,9 +88,7 @@ async function write (wif) {
 
   // submit tx
   const txHex = tx.toString('hex')
-
-  const url = 'https://api.whatsonchain.com/v1/bsv/test/tx/raw'
-
+  const url = `https://api.whatsonchain.com/v1/bsv/${wocNetwork}/tx/raw`
   const submitResponse = await axios({
     method: 'post',
     url: url,
