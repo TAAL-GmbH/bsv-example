@@ -1,44 +1,67 @@
 const bsv = require('bsv')
 const axios = require('axios')
+const fs = require('fs').promises;
 
 const wocNetwork = 'test'    // The network for the whatsonchain URL - 'main' or 'test'
 
 const bsvNetwork = 'testnet' // The network for BSV library - 'livenet' or 'testnet'
 
-const dataString = 'test' // the data to write to the blockchain.
+const wifFilename = 'wif.txt'
 
 const myArgs = process.argv.slice(2)
 
 switch (myArgs[0]) {
   case 'generate':
-    generateAddress()
+    generate()
     break
   case 'write':
     if (!myArgs[1]) {
-      console.log('please supply your WIF.')
+      console.log('please supply the text to write to the blockchain.')
       break
     }
     write(myArgs[1])
     break
   default:
-    console.log('Usage:\ngenerate: create a wallet\nwrite <WIF>: write data to the chain')
+    console.log('Usage:\ngenerate: create a wallet\nwrite <txt>: write the given text to the blockchain')
 }
 
-// generate testnet address
-
-// print the WIF and return
-function generateAddress () {
+// generate testnet wallet
+function generate () {
   const privateKey = bsv.PrivateKey()
   const wif = privateKey.toWIF()
   const addr = privateKey.toAddress(bsvNetwork).toString() 
+  
+  // we will overwrite any existing wif file
+  fs.writeFile(wifFilename, wif, function(err) {
+    if (err) {
+       return console.error(err)
+    }
+  })
   console.log('Your WIF:     ' + wif)
   console.log('Your address: ' + addr)
   if (wocNetwork === 'test') {
-    console.log('Send some test coins to the address from to https://faucet.bitcoincloud.net/')
+    console.log('Send some test coins to the address using https://faucet.bitcoincloud.net/')
   }
 }
 
-async function write (wif) {
+async function write (txt) {
+  console.log('txt: ' + txt)
+  
+  // read the wif file
+  let wif
+  try {
+  wif = await fs.readFile(wifFilename)
+  } catch(e) {
+    console.log('Error reading WIF file')
+    console.log(e)
+    return
+  }
+wif = wif.toString() // is a buffer
+  if (!wif) {
+    console.log('invalid WIF file. Please run generate.')
+    return
+  }
+ 
   const privateKey = bsv.PrivateKey.fromWIF(wif)
   const publicKeyHash = bsv.crypto.Hash.sha256ripemd160(privateKey.publicKey.toBuffer()).toString('hex')
 
@@ -77,7 +100,7 @@ async function write (wif) {
   tx.from(utxo)
 
   // add data output
-  tx.addSafeData(dataString)
+  tx.addSafeData(txt)
 
   // add change
   tx.addOutput(new bsv.Transaction.Output({
