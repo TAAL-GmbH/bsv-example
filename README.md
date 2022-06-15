@@ -10,7 +10,7 @@ To run
 
 This generates a private key and saves your newly generated WIF (Wallet Interchange Format) to a text file (wif.txt). It will also print out your address.
 
-The WIF will be used later. Now send some test coins to your address using the faucet website https://faucet.bitcoincloud.net
+The WIF will be used later. Now send some test coins to your address using the faucet website https://faucet.bitcoincloud.net or https://witnessonchain.com/faucet/tbsv
 
 Now call write adding the text you want to write as another arguement.
 
